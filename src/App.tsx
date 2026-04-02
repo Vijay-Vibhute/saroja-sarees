@@ -21,8 +21,10 @@ import { useSanityProducts } from './utils/useSanityProducts';
 import Toast from './components/Toast';
 
 type CartItem = { id: string; qty: number };
+type ProductSourceMode = 'local' | 'sanity' | 'both';
 
 const PRODUCTS_STORAGE_KEY = 'store_products';
+const PRODUCT_SOURCE_KEY = 'store_product_source';
 
 export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -30,7 +32,12 @@ export default function App() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  const [useSanitySource, setUseSanitySource] = useState(false);
+  const [productSourceMode, setProductSourceMode] = useState<ProductSourceMode>(() => {
+    if (typeof window === 'undefined') return 'sanity';
+    const stored = localStorage.getItem(PRODUCT_SOURCE_KEY);
+    if (stored === 'local' || stored === 'sanity' || stored === 'both') return stored;
+    return 'sanity';
+  });
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -56,31 +63,34 @@ export default function App() {
   // Try to fetch from Sanity CMS
   const { products: sanityProducts, loading: sanityLoading } = useSanityProducts();
 
-  // Load products: localStorage, then default. Sanity products are merged via toggle.
+  // Load products from localStorage, and restore admin auth state.
+  useEffect(() => {
+    const stored = localStorage.getItem(PRODUCTS_STORAGE_KEY);
+    setProducts(stored ? JSON.parse(stored) : defaultProducts);
+    setIsAdminAuthenticated(adminAuth.isAuthenticated());
+  }, []);
+
   useEffect(() => {
     if (!sanityLoading) {
-      const stored = localStorage.getItem(PRODUCTS_STORAGE_KEY);
-      setProducts(stored ? JSON.parse(stored) : defaultProducts);
       if (sanityProducts.length > 0) {
         console.log('✅ Sanity CMS products available:', sanityProducts.length);
       } else {
         console.log('ℹ️ Using local products (Sanity has no products yet)');
       }
     }
-    setIsAdminAuthenticated(adminAuth.isAuthenticated());
   }, [sanityLoading]);
 
   // Listen for product updates from admin panel (localStorage)
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === PRODUCTS_STORAGE_KEY && sanityProducts.length === 0) {
+      if (e.key === PRODUCTS_STORAGE_KEY && productSourceMode !== 'sanity') {
         const updated = e.newValue ? JSON.parse(e.newValue) : defaultProducts;
         setProducts(updated);
       }
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [sanityProducts]);
+  }, [productSourceMode]);
 
   // Load wishlist count for authenticated user
   useEffect(() => {
@@ -148,9 +158,18 @@ export default function App() {
     setShowCheckout(true);
   };
 
-  const displayProducts: Product[] = useSanitySource && sanityProducts.length > 0
-    ? sanityProducts
-    : products;
+  const mergedProducts: Product[] = (() => {
+    const byId = new Map<string, Product>();
+    products.forEach((product) => byId.set(product.id, product));
+    sanityProducts.forEach((product) => byId.set(product.id, product));
+    return Array.from(byId.values());
+  })();
+
+  const displayProducts: Product[] = productSourceMode === 'sanity'
+    ? (sanityProducts.length > 0 ? sanityProducts : products)
+    : productSourceMode === 'both'
+      ? mergedProducts
+      : products;
 
   const cartTotal = cart.reduce((total, item) => {
     const product = displayProducts.find((p) => p.id === item.id);
@@ -170,8 +189,8 @@ export default function App() {
       })
     : baseFiltered;
 
-  // Show loading state while fetching from Sanity
-  if (sanityLoading) {
+  // Only block rendering for Sanity-dependent modes.
+  if (sanityLoading && productSourceMode !== 'local') {
     return (
       <div style={{
         display: 'flex',
@@ -197,6 +216,11 @@ export default function App() {
     setIsAdminAuthenticated(false);
   };
 
+  const handleProductSourceChange = (mode: ProductSourceMode) => {
+    setProductSourceMode(mode);
+    localStorage.setItem(PRODUCT_SOURCE_KEY, mode);
+  };
+
   const handleCheckout = () => {
     setShowCheckout(true);
   };
@@ -215,7 +239,13 @@ export default function App() {
   }
 
   if (isAdminAuthenticated) {
-    return <AdminProducts onLogout={handleAdminLogout} />;
+    return (
+      <AdminProducts
+        onLogout={handleAdminLogout}
+        productSourceMode={productSourceMode}
+        onProductSourceChange={handleProductSourceChange}
+      />
+    );
   }
 
   const handleOpenDetails = (id: string) => {
@@ -264,19 +294,6 @@ export default function App() {
         onSearchChange={setSearchQuery}
         onLogoutClick={handleLogout}
       />
-      {!showCart && !showCheckout && !selectedProduct && (
-        <div style={{ padding: '8px 16px', fontSize: '0.9rem', color: '#4b5563' }}>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <span>Use Sanity products (add to local):</span>
-            <input
-              type="checkbox"
-              checked={useSanitySource}
-              onChange={(e) => setUseSanitySource(e.target.checked)}
-            />
-          </label>
-        </div>
-      )}
-      
       {/* Admin Access Button */}
       <div style={{
         position: 'fixed',

@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Product, products as defaultProducts } from '../data/products';
 
+type ProductSourceMode = 'local' | 'sanity' | 'both';
+
 interface AdminProductsProps {
   onLogout: () => void;
+  productSourceMode: ProductSourceMode;
+  onProductSourceChange: (mode: ProductSourceMode) => void;
 }
 
 const PRODUCTS_STORAGE_KEY = 'store_products';
 
-export default function AdminProducts({ onLogout }: AdminProductsProps) {
+export default function AdminProducts({
+  onLogout,
+  productSourceMode,
+  onProductSourceChange,
+}: AdminProductsProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -90,6 +98,20 @@ export default function AdminProducts({ onLogout }: AdminProductsProps) {
     setTimeout(() => setMessage(''), 3000);
   };
 
+  const sourceLabel =
+    productSourceMode === 'sanity'
+      ? 'Sanity only'
+      : productSourceMode === 'local'
+        ? 'Admin UI only'
+        : 'Both sources';
+
+  const sourceColor =
+    productSourceMode === 'sanity'
+      ? '#16a34a'
+      : productSourceMode === 'local'
+        ? '#2563eb'
+        : '#7c3aed';
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', color: '#111827' }}>
       {/* Header */}
@@ -122,6 +144,63 @@ export default function AdminProducts({ onLogout }: AdminProductsProps) {
 
       {/* Main Content */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '30px 20px' }}>
+        <div
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '20px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: '8px' }}>Store Product Source</div>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '10px' }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="radio"
+                name="productSourceMode"
+                checked={productSourceMode === 'sanity'}
+                onChange={() => onProductSourceChange('sanity')}
+              />
+              <span>Sanity only</span>
+            </label>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="radio"
+                name="productSourceMode"
+                checked={productSourceMode === 'local'}
+                onChange={() => onProductSourceChange('local')}
+              />
+              <span>Admin UI only</span>
+            </label>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="radio"
+                name="productSourceMode"
+                checked={productSourceMode === 'both'}
+                onChange={() => onProductSourceChange('both')}
+              />
+              <span>Both sources</span>
+            </label>
+          </div>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              backgroundColor: '#f8fafc',
+              border: `1px solid ${sourceColor}`,
+              borderRadius: '9999px',
+              padding: '6px 12px',
+              fontSize: '13px',
+              color: sourceColor,
+              fontWeight: 600,
+            }}
+          >
+            Active Source: {sourceLabel}
+          </div>
+        </div>
+
         {/* Message */}
         {message && (
           <div
