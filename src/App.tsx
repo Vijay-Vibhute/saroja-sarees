@@ -359,6 +359,7 @@ export default function App() {
               total={cartTotal}
               onBack={() => setShowCheckout(false)}
               onSuccess={handlePaymentSuccess}
+              onNeedLogin={() => setShowLogin(true)}
             />
           ) : showCart ? (
             <Cart

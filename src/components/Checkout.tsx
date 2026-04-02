@@ -12,9 +12,10 @@ type Props = {
   total: number;
   onBack: () => void;
   onSuccess?: () => void;
+  onNeedLogin?: () => void;
 };
 
-export default function Checkout({ cartItems, products, total, onBack, onSuccess }: Props) {
+export default function Checkout({ cartItems, products, total, onBack, onSuccess, onNeedLogin }: Props) {
   const { t, i18n } = useTranslation();
   const { token, user } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('razorpay');
@@ -89,7 +90,11 @@ export default function Checkout({ cartItems, products, total, onBack, onSuccess
     }
 
     if (!token || !user) {
-      setMessage({ type: 'error', text: 'Please login to place an order' });
+      if (onNeedLogin) {
+        onNeedLogin();
+      } else {
+        setMessage({ type: 'error', text: 'Please login to place an order' });
+      }
       return;
     }
 
