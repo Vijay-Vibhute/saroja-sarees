@@ -7,6 +7,7 @@ interface AdminProductsProps {
   onLogout: () => void;
   productSourceMode: ProductSourceMode;
   onProductSourceChange: (mode: ProductSourceMode) => void;
+  onProductsChange: (updatedProducts: Product[]) => void;
 }
 
 const PRODUCTS_STORAGE_KEY = 'store_products';
@@ -15,6 +16,7 @@ export default function AdminProducts({
   onLogout,
   productSourceMode,
   onProductSourceChange,
+  onProductsChange,
 }: AdminProductsProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -25,6 +27,12 @@ export default function AdminProducts({
   });
   const [message, setMessage] = useState('');
   const [imageError, setImageError] = useState(false);
+  const [pendingProductSourceMode, setPendingProductSourceMode] =
+    useState<ProductSourceMode>(productSourceMode);
+
+  useEffect(() => {
+    setPendingProductSourceMode(productSourceMode);
+  }, [productSourceMode]);
 
   // Load products from localStorage or use defaults
   useEffect(() => {
@@ -36,6 +44,7 @@ export default function AdminProducts({
   const saveProducts = (updatedProducts: Product[]) => {
     setProducts(updatedProducts);
     localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(updatedProducts));
+    onProductsChange(updatedProducts);
   };
 
   const handleAddNew = () => {
@@ -112,6 +121,17 @@ export default function AdminProducts({
         ? '#2563eb'
         : '#7c3aed';
 
+  const hasPendingSourceChange = pendingProductSourceMode !== productSourceMode;
+
+  const handleApplySourceChange = () => {
+    onProductSourceChange(pendingProductSourceMode);
+    showMessage('Product source updated successfully');
+  };
+
+  const handleCancelSourceChange = () => {
+    setPendingProductSourceMode(productSourceMode);
+  };
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', color: '#111827' }}>
       {/* Header */}
@@ -159,8 +179,8 @@ export default function AdminProducts({
               <input
                 type="radio"
                 name="productSourceMode"
-                checked={productSourceMode === 'sanity'}
-                onChange={() => onProductSourceChange('sanity')}
+                checked={pendingProductSourceMode === 'sanity'}
+                onChange={() => setPendingProductSourceMode('sanity')}
               />
               <span>Sanity only</span>
             </label>
@@ -168,8 +188,8 @@ export default function AdminProducts({
               <input
                 type="radio"
                 name="productSourceMode"
-                checked={productSourceMode === 'local'}
-                onChange={() => onProductSourceChange('local')}
+                checked={pendingProductSourceMode === 'local'}
+                onChange={() => setPendingProductSourceMode('local')}
               />
               <span>Admin UI only</span>
             </label>
@@ -177,11 +197,43 @@ export default function AdminProducts({
               <input
                 type="radio"
                 name="productSourceMode"
-                checked={productSourceMode === 'both'}
-                onChange={() => onProductSourceChange('both')}
+                checked={pendingProductSourceMode === 'both'}
+                onChange={() => setPendingProductSourceMode('both')}
               />
               <span>Both sources</span>
             </label>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+            <button
+              onClick={handleApplySourceChange}
+              disabled={!hasPendingSourceChange}
+              style={{
+                padding: '7px 14px',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: hasPendingSourceChange ? 'pointer' : 'not-allowed',
+                backgroundColor: hasPendingSourceChange ? '#16a34a' : '#9ca3af',
+                color: '#ffffff',
+                fontWeight: 600,
+              }}
+            >
+              Apply
+            </button>
+            <button
+              onClick={handleCancelSourceChange}
+              disabled={!hasPendingSourceChange}
+              style={{
+                padding: '7px 14px',
+                borderRadius: '6px',
+                border: '1px solid #9ca3af',
+                cursor: hasPendingSourceChange ? 'pointer' : 'not-allowed',
+                backgroundColor: '#ffffff',
+                color: '#111827',
+                fontWeight: 600,
+              }}
+            >
+              Cancel
+            </button>
           </div>
           <div
             style={{

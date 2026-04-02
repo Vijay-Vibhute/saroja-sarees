@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { Product } from '../data/products';
 
+const DEFAULT_BACKEND_URL = 'https://saroja-backend.onrender.com';
+
 interface SanityProduct {
   _id: string;
   id: string;
@@ -56,7 +58,7 @@ export const useSanityProducts = () => {
 
   const backendUrl =
     (typeof process !== 'undefined' && process.env.REACT_APP_BACKEND_URL) ||
-    'http://localhost:3001';
+    DEFAULT_BACKEND_URL;
 
   useEffect(() => {
     const fetchProducts = async () => {

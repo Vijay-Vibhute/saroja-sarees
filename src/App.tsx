@@ -25,6 +25,7 @@ type ProductSourceMode = 'local' | 'sanity' | 'both';
 
 const PRODUCTS_STORAGE_KEY = 'store_products';
 const PRODUCT_SOURCE_KEY = 'store_product_source';
+const DEFAULT_BACKEND_URL = 'https://saroja-backend.onrender.com';
 
 export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -58,7 +59,7 @@ export default function App() {
   const { t } = useTranslation();
   const { isAuthenticated, token, logout } = useAuth();
 
-  const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
+  const API_URL = process.env.REACT_APP_BACKEND_URL || DEFAULT_BACKEND_URL;
 
   // Try to fetch from Sanity CMS
   const { products: sanityProducts, loading: sanityLoading } = useSanityProducts();
@@ -213,6 +214,8 @@ export default function App() {
 
   const handleAdminLogout = () => {
     adminAuth.logout();
+    const stored = localStorage.getItem(PRODUCTS_STORAGE_KEY);
+    setProducts(stored ? JSON.parse(stored) : defaultProducts);
     setIsAdminAuthenticated(false);
   };
 
@@ -244,6 +247,7 @@ export default function App() {
         onLogout={handleAdminLogout}
         productSourceMode={productSourceMode}
         onProductSourceChange={handleProductSourceChange}
+        onProductsChange={setProducts}
       />
     );
   }
